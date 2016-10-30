@@ -46,6 +46,9 @@ class TestEstimateMoments(unittest.TestCase):
 
 	def test_basic_case(self):
 
+		""" Test the moments_estimation function in case of no randomness,
+		e.g. all the y_i = 2 """
+
 		n_steps = 1000
 		input_epsilon =[1]*n_steps
 		input_y = [2]*n_steps
