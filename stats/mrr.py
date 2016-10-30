@@ -42,35 +42,35 @@ def _c_31(m, rho):
 
 
 def _c_22(m, rho):
-	return 1.-2.*m**2+m**4+4.*m**2*rho*(1.-m**2)
+	return 1. - 2.*m**2 + m**4 + 4.*m**2*rho*(1.-m**2)
 
 
 def _gm_1_1(m, rho, theta, phi, sigma):
 	return sigma**2 + (_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_2(m) \
-			+ 2.*_c_l(theta, phi)*_c_r(rho, theta, phi)*_c_11(m, rho)
+		   + 2.*_c_l(theta, phi)*_c_r(rho, theta, phi)*_c_11(m, rho)
 
 
 def _gm_1_2(m, rho, theta, phi):
-	return (_c_l(theta, phi)**3+_c_r(rho, theta, phi)**3)*_c_3(m) \
-		   + 3.*(_c_l(theta, phi)+_c_r(rho, theta, phi))*_c_21(m, rho)
+	return (_c_l(theta, phi)**3 + _c_r(rho, theta, phi)**3)*_c_3(m) \
+		   + 3.*(_c_l(theta, phi) + _c_r(rho, theta, phi))*_c_21(m, rho)
 
 
 def _gm_1_3(m, rho, theta, phi, sigma):
-	return (_c_l(theta, phi)**4+_c_r(rho, theta, phi)**4)*_c_4(m) \
-			+ 4.*_c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_l(theta, phi)**2+_c_r(rho, theta, phi)**2)*_c_31(m,rho) \
+	return (_c_l(theta, phi)**4 + _c_r(rho, theta, phi)**4)*_c_4(m) \
+			+ 4.*_c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_31(m,rho) \
 			+ 6.*_c_l(theta, phi)**2*_c_r(rho, theta, phi)**2*_c_22(m,rho) \
-			+ 6.*sigma**2*((_c_l(theta, phi)**2+_c_r(rho, theta, phi)**2)*_c_2(m) + 2.*_c_l(theta, phi)*_c_r(rho, theta, phi)*_c_11(m,rho)) \
+			+ 6.*sigma**2*((_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_2(m) + 2.*_c_l(theta, phi)*_c_r(rho, theta, phi)*_c_11(m,rho)) \
 			+ 3.*sigma**4
 
 
-def _gm_1_4(m, rho, theta, phi, sigma):
-	return (_c_l(theta, phi)**2+_c_r(rho, theta, phi)**2)*_c_11(m, rho) \
-			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_11(m, rho)+_c_101(m, rho))
+def _gm_1_4(m, rho, theta, phi):
+	return (_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_11(m, rho) \
+			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_2(m) + _c_101(m, rho))
 
 
-def _gm_1_5(m, rho, theta, phi, sigma):
-	return (_c_l(theta, phi)**2+_c_r(rho, theta, phi)**2)*_c_101(m, rho) \
-			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_11(m, rho)+_c_1001(m, rho))
+def _gm_1_5(m, rho, theta, phi):
+	return (_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_101(m, rho) \
+			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_11(m, rho) + _c_1001(m, rho))
 
 
 def dar(n, m=0., rho=0.5, start=1):
@@ -176,8 +176,22 @@ def estimate_moments(sample):
 	return mm_1_1/(1.*count), mm_1_2/(1.*count), mm_1_3/(1.*count), mm_1_4/(1.*count-1.), mm_1_5/(1.*count-2.)
 
 
-if __name__ == '__main__':
+def evaluate_moments(m, rho, theta, phi, sigma):
+	"""
+	Evaluate the moments of the transaction price returns of a MRR process
+	:param m: dar mean parameter
+	:param rho: dar correlation parameter
+	:param theta: impact parameter
+	:param phi: spread parameter
+	:param sigma: volatility parameter
+	:return: tuple of the moments y^2, y^3, y^4, y*y(-1), y*y(-2)
+	"""
 
-	a = mrr(100, rho=0., theta=0., phi=1., sigma=0.)
-	for i, j in a:
-		print(i,j)
+	output = (
+		_gm_1_1(m, rho, theta, phi, sigma), _gm_1_2(m, rho, theta, phi),
+		_gm_1_3(m, rho, theta, phi, sigma), _gm_1_4(m, rho, theta, phi),
+		_gm_1_5(m, rho, theta, phi)
+	)
+
+	return output
+

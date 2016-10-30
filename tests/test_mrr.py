@@ -30,7 +30,6 @@ class TestMrr(unittest.TestCase):
 		phi_in = 1.
 		rho_in = 0.5
 		theta_in = 1.
-		phi_in = 1.
 		sigma_in = 0.
 
 		mm = mrr.mrr(n=n_steps, m=m_in, rho=rho_in, theta=theta_in, phi=phi_in, sigma=sigma_in)
@@ -41,6 +40,17 @@ class TestMrr(unittest.TestCase):
 		for i, j in mm:
 			self.assertIn(j, expected_values)
 
+	def test_gm_1_1(self):
+		m = 0.
+		rho = 0.
+		theta = 1.
+		phi = 1.
+		sigma = 1.
+
+		actual_output = mrr._gm_1_1(m, rho, theta, phi, sigma)
+		expected_output = 6.
+
+		self.assertEqual(expected_output, actual_output)
 
 class TestEstimateMoments(unittest.TestCase):
 
