@@ -141,6 +141,30 @@ def mrr(n, m=0., rho=0.5, theta=1., phi=1., sigma=1.):
 		epsilon_previous = epsilon_new
 
 
+def estimate_moments(sample):
+
+	mm_1_1 = 0.
+	mm_1_2 = 0.
+	mm_1_3 = 0.
+	mm_1_4 = 0.
+	mm_1_5 = 0.
+
+	y_p = 0.
+	y_pp = 0.
+
+	count = 0
+
+	for e, y in sample:
+		count += 1
+		mm_1_1 += y**2
+		mm_1_2 += y**3
+		mm_1_3 += y**4
+		mm_1_4 += y*y_p
+		mm_1_5 += y*y_pp
+		y_pp = y_p
+		y_p = y
+
+	return mm_1_1/(1.*count), mm_1_2/(1.*count), mm_1_3/(1.*count), mm_1_4/(1.*count-1.), mm_1_5/(1.*count-2.)
 
 
 if __name__ == '__main__':

@@ -40,3 +40,26 @@ class TestMrr(unittest.TestCase):
 
 		for i, j in mm:
 			self.assertIn(j, expected_values)
+
+
+class TestEstimateMoments(unittest.TestCase):
+
+	def test_basic_case(self):
+
+		n_steps = 1000
+		input_epsilon =[1]*n_steps
+		input_y = [2]*n_steps
+
+		# creating an iterator from the input list
+		zip_e_y = zip(input_epsilon, input_y)
+
+		# estimation of the moments
+		actual_output = mrr.estimate_moments(zip_e_y)
+
+		# expected output
+		expected_output = (4., 8., 16., 4., 4.)
+
+		for i, j in zip(actual_output, expected_output):
+			self.assertEqual(i, j)
+
+
