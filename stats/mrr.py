@@ -1,5 +1,6 @@
 import random
 
+
 def _c_l(theta, phi):
 	return theta + phi
 
@@ -72,8 +73,8 @@ def _gm_1_5(m, rho, theta, phi, sigma):
 			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_11(m, rho)+_c_1001(m, rho))
 
 
-
 def dar(n, m=0., rho=0.5, start=1):
+
 	"""
 	Generator of a DAR(1) process
 
@@ -83,6 +84,7 @@ def dar(n, m=0., rho=0.5, start=1):
 	:param start: int, starting value of the series
 	:return: int, +1 or -1
 	"""
+
 	if rho < -1. or rho > 1.:
 		raise ValueError('-1 < rho < 1')
 
@@ -143,6 +145,13 @@ def mrr(n, m=0., rho=0.5, theta=1., phi=1., sigma=1.):
 
 def estimate_moments(sample):
 
+	"""
+	Estimate the moments of the transaction price returns of a MRR process
+
+	:param sample: iterable of the trade initiation variable espilon_i
+		and transaction price return y_i
+	:return: tuple of the moments y^2, y^3, y^4, y*y(-1), y*y(-2)
+	"""
 	mm_1_1 = 0.
 	mm_1_2 = 0.
 	mm_1_3 = 0.
