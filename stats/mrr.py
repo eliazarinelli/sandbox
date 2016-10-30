@@ -129,17 +129,15 @@ def mrr(n, m=0., rho=0.5, theta=1., phi=1., sigma=1.):
 	:return: the trade initiation variable epsilon_i and the price return y_i
 	"""
 
-	c_l = theta + phi
-	c_r = -1.*(rho * theta + phi)
-
 	epsilon_gen = dar(n+1, m=m, rho=rho, start=1)
 
 	epsilon_previous = next(epsilon_gen)
 	i = 0
 
 	while i < n:
+
 		epsilon_new = next(epsilon_gen)
-		yield epsilon_new, c_l * float(epsilon_new) + c_r * float(epsilon_previous) + random.gauss(0., sigma)
+		yield epsilon_new, _c_l(theta, phi) * float(epsilon_new) + _c_r(rho, theta, phi) * float(epsilon_previous) + random.gauss(0., sigma)
 		epsilon_previous = epsilon_new
 
 
