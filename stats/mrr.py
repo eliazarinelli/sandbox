@@ -1,4 +1,7 @@
 import random
+import numpy as np
+import scipy.stats
+import scipy.optimize
 
 
 def _c_l(theta, phi):
@@ -85,11 +88,11 @@ def dar(n, m=0., rho=0.5, start=1):
 	:return: int, +1 or -1
 	"""
 
-	if rho < -1. or rho > 1.:
-		raise ValueError('-1 < rho < 1')
+	if rho < 0. or rho > 1.:
+		raise ValueError('0 < rho < 1')
 
-	if m < 0. or m > 1.:
-		raise ValueError('0 < m < 1')
+	if m < -1. or m > 1.:
+		raise ValueError('-1 < m < 1')
 
 	if start not in [-1, 1]:
 		raise ValueError('start should be -1 or +1')
@@ -193,3 +196,103 @@ def evaluate_moments(m, rho, theta, phi, sigma):
 
 	return output
 
+
+def _vv(x, y, s, r):
+	return s**2 + (x+y)**2 + 2.*(r-1.)*x*y
+
+
+def _qq(x, y, r):
+	return r*(x+y)**2 + x*y*(1-r)**2
+
+
+def _kk(x, y, s, r):
+	return (x+y)**4 + 4.*(r-1.)*x*y*(x**2+y**2) + 6.*s**2*((x+y)**2 + 2.*(r-1.)*x*y) + 3.*s**4
+
+
+######################################################################################################
+
+def estimate_vkq(sample):
+
+	vv_e = np.var(sample)
+	kk_e = scipy.stats.kurtosis(sample, fisher=False) * vv_e**2
+	q1_e = np.cov(sample[1:], sample[:-1])[0, 1]
+
+	return vv_e, kk_e, q1_e
+
+def estimate_rho(sample, n=5):
+
+	# autocovariance of the sample
+	acv = []
+	for i in range(1, n):
+		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
+
+	# positive autocovariance
+	p_acv = np.array([-1.*i for i in acv])
+
+	# list of integers from 1 to n
+	l_int = np.arange(1, n)
+
+	# removing negative p_acv
+	sel_pos = p_acv > 0.
+	p_acv_s = p_acv[sel_pos]
+	l_int_s = l_int[sel_pos]
+
+	# parameter estimation
+	out = scipy.stats.linregress(l_int_s, np.log(p_acv_s))
+
+	# return the estimation of rho
+	return np.exp(out[0])
+
+######################################################################################################
+
+def _equations(params, sample_moments_rho):
+
+	cl, cr, sigma = params
+	vv_s, kk_s, qq_s, rho_s = sample_moments_rho
+	return (_vv(cl, cr, sigma, rho_s) - vv_s,
+			_kk(cl, cr, sigma, rho_s) - kk_s,
+			_qq(cl, cr, rho_s) - qq_s)
+
+
+def find_params(params_start, *sample_mometns_rho):
+	return scipy.optimize.fsolve(_equations, x0=params_start, args=sample_mometns_rho)
+
+
+def estimate_parameters(sample):
+
+	# moments estimation
+	vv_sample, kk_sample, qq_sample = estimate_vkq(sample)
+
+	# rho estimation
+	rho_tmp = []
+	for n_in in range(4, 10):
+		rho_tmp.append(estimate_rho(sample, n=n_in))
+	rho_sample = np.mean(rho_tmp)
+
+	moments_rho_sample = (vv_sample, kk_sample, qq_sample, rho_sample)
+
+	# starting value of the inference parameter
+	cl_start = 1.
+	cr_start = -1.
+	sigma_start = 1.
+	params_start = [cl_start, cr_start, sigma_start]
+
+	# default value of the sample parameters
+	theta_sample = -1000.
+	phi_sample = -1000.
+	sigma_sample = -1000.
+
+	while theta_sample < 0. or phi_sample < 0. or sigma_sample < 0.:
+
+		params_sample = find_params(params_start, moments_rho_sample)
+
+		cl_sample = params_sample[0]
+		cr_sample = params_sample[1]
+		sigma_sample = params_sample[2]
+		theta_sample = (cl_sample+cr_sample)/(1.-rho_sample)
+		phi_sample = cl_sample - theta_sample
+
+		# new starting parameters
+		params_start = [i + np.random.normal(0., 1.) for i in params_start]
+
+	return theta_sample, phi_sample, rho_sample, sigma_sample
