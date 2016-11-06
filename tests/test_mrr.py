@@ -1,6 +1,7 @@
 import unittest
 import stats.mrr as mrr
 
+import numpy as np
 
 class TestDar(unittest.TestCase):
 
@@ -110,3 +111,25 @@ class TestEsitmateParameters(unittest.TestCase):
 		actual_output = mrr._estimate_vkq(sample)
 
 		self.assertEqual(expected_output, actual_output)
+
+	def test_fit_mean(self):
+
+		""" Linear fit"""
+
+		# generating points
+		n_points = 2**5
+		slope = 2.
+		x = np.linspace(1., 2., n_points)
+		y = slope*x + np.random.normal(0., 0.001, n_points)
+
+		# expected output
+		expected_output = slope
+
+		# actual output
+		actual_output = mrr._fit_mean(x, y)
+
+		# tolerance of the error
+		tolerance = 0.01
+		self.assertTrue(np.abs(actual_output-expected_output) < tolerance)
+
+
