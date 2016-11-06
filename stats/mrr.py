@@ -200,12 +200,12 @@ def evaluate_moments(m, rho, theta, phi, sigma):
 ######################################################################################################
 
 
-def _estimate_acv(sample, n_legs):
+def _estimate_acv(sample, n_lags):
 
 	"""
 	Estimate the first n-lags auto-covariance of a sample
 	:param sample: list, a sample of transaction price returns
-	:param n_legs: int, number of lags
+	:param n_lags: int, number of lags
 	:return: list, sample auto-covariance
 	"""
 
@@ -216,7 +216,7 @@ def _estimate_acv(sample, n_legs):
 	acv.append(np.cov(sample, sample)[0, 1])
 
 	# i-lag autocovariance
-	for i in range(1, n_legs+1):
+	for i in range(1, n_lags+1):
 		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
 
 	return acv
@@ -238,51 +238,63 @@ def _estimate_vkq(sample):
 	kk_e = scipy.stats.kurtosis(sample, fisher=False) * vv_e**2
 
 	# 1-lag covariance
-	q1_e = _estimate_acv(sample, n_legs=1)[1]
+	q1_e = _estimate_acv(sample, 1)[1]
 
 	return vv_e, kk_e, q1_e
 
 
-def _fit_rho(sample, n=5):
+def _fit_mean(x, y):
 
 	"""
-	Fit rho parameter
-	:param sample:
-	:param n:
-	:return:
-	"""
-	# autocovariance of the sample
-	acv = []
-	for i in range(1, n):
-		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
+	Average the slope of the linear fit of y vs x
 
-	# positive autocovariance
-	p_acv = np.array([-1.*i for i in acv])
+	:param x: list, x values
+	:param y: list, y values
+	:return: float, average slope
+	"""
+
+	tmp = []
+	for i in range(3, len(x)+1):
+		tmp.append(scipy.stats.linregress(x[:i], y[:i])[0])
+	return np.mean(tmp)
+
+
+def _estimate_rho(sample, n_lags):
+
+	"""
+	Estimate the sample rho
+
+	:param sample: list, transaction price returns
+	:param n_lags: int, number of lags for the fitting
+	:return: float, sample rho
+
+	Find the best fitting parameter rho_i that describe the decay
+	of the first i lags of the sample auto-covariance function (times -1).
+	Repeat the procedure for 3<i<n_lags.
+	Returns the average of the estimated rho_i.
+	"""
+
+	# auto-covariance of the sample
+	acv = _estimate_acv(sample, n_lags)[1:]
+
+	# positive auto-covariance
+	yy_0 = np.array([-1.*i for i in acv])
 
 	# list of integers from 1 to n
-	l_int = np.arange(1, n)
+	xx_0 = np.arange(1, len(acv)+1)
 
 	# removing negative p_acv
-	sel_pos = p_acv > 0.
-	p_acv_s = p_acv[sel_pos]
-	l_int_s = l_int[sel_pos]
+	sel_pos = yy_0 > 0.
+	xx_1 = xx_0[sel_pos]
+	yy_1 = yy_0[sel_pos]
 
-	# parameter estimation
-	out = scipy.stats.linregress(l_int_s, np.log(p_acv_s))
-
-	# return the estimation of rho
-	return np.exp(out[0])
-
-
-def _estimate_rho(sample):
-
-	# rho estimation
-	rho_tmp = []
-
-	for n_in in range(4, 10):
-		rho_tmp.append(_fit_rho(sample, n=n_in))
-
-	return np.mean(rho_tmp)
+	if len(xx_1) < 3:
+		#raise Warning('Not enough points for the fit')
+		return np.nan
+	else:
+		# rho sample
+		rho_sample_log = _fit_mean(xx_1, np.log(yy_1))
+		return np.exp(rho_sample_log)
 
 
 ######################################################################################################
@@ -350,6 +362,8 @@ def estimate_parameters(sample):
 
 	# rho estimation
 	rho_sample = _estimate_rho(sample)
-
-	return _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample)
+	if np.isnan(rho_sample):
+		return np.nan, np.nan, np.nan, np.nan
+	else:
+		return _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample)
 
