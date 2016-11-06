@@ -228,7 +228,7 @@ def _estimate_vkq(sample):
 	Estimate the sample second and fourth central moments and 1-lag covariance
 
 	:param sample: list, a sample of transaction price returns
-	:return: floats, sample moments
+	:return: tuple, sample moments
 	"""
 
 	# second central moment

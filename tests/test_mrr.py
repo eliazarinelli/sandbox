@@ -94,3 +94,19 @@ class TestEsitmateParameters(unittest.TestCase):
 		actual_output = mrr._estimate_acv(sample, n_legs)
 
 		self.assertEqual(expected_output, actual_output)
+
+	def test_estimate_vkq(self):
+
+		""" Moments and auto-covariance of a constant list should be 0 """
+
+		# generating sample
+		sample_length = 1000
+		sample = [1.]*sample_length
+
+		# expected output
+		expected_output = (0., 0., 0.)
+
+		# actual output
+		actual_output = mrr._estimate_vkq(sample)
+
+		self.assertEqual(expected_output, actual_output)
