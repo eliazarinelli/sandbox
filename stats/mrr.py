@@ -197,30 +197,60 @@ def evaluate_moments(m, rho, theta, phi, sigma):
 	return output
 
 
-def _vv(x, y, s, r):
-	return s**2 + (x+y)**2 + 2.*(r-1.)*x*y
-
-
-def _qq(x, y, r):
-	return r*(x+y)**2 + x*y*(1-r)**2
-
-
-def _kk(x, y, s, r):
-	return (x+y)**4 + 4.*(r-1.)*x*y*(x**2+y**2) + 6.*s**2*((x+y)**2 + 2.*(r-1.)*x*y) + 3.*s**4
-
-
 ######################################################################################################
 
-def estimate_vkq(sample):
 
+def _estimate_acv(sample, n_legs):
+
+	"""
+	Estimate the first n-lags auto-covariance of a sample
+	:param sample: list, a sample of transaction price returns
+	:param n_legs: int, number of lags
+	:return: list, sample auto-covariance
+	"""
+
+	# empty output
+	acv = []
+
+	# 0-lag auto-covariance
+	acv.append(np.cov(sample, sample)[0, 1])
+
+	# i-lag autocovariance
+	for i in range(1, n_legs+1):
+		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
+
+	return acv
+
+
+def _estimate_vkq(sample):
+
+	"""
+	Estimate the sample second and fourth central moments and 1-lag covariance
+
+	:param sample: list, a sample of transaction price returns
+	:return: floats, sample moments
+	"""
+
+	# second central moment
 	vv_e = np.var(sample)
+
+	# fourth central moment
 	kk_e = scipy.stats.kurtosis(sample, fisher=False) * vv_e**2
-	q1_e = np.cov(sample[1:], sample[:-1])[0, 1]
+
+	# 1-lag covariance
+	q1_e = _estimate_acv(sample, n_legs=1)[1]
 
 	return vv_e, kk_e, q1_e
 
-def estimate_rho(sample, n=5):
 
+def _fit_rho(sample, n=5):
+
+	"""
+	Fit rho parameter
+	:param sample:
+	:param n:
+	:return:
+	"""
 	# autocovariance of the sample
 	acv = []
 	for i in range(1, n):
@@ -243,7 +273,31 @@ def estimate_rho(sample, n=5):
 	# return the estimation of rho
 	return np.exp(out[0])
 
+
+def _estimate_rho(sample):
+
+	# rho estimation
+	rho_tmp = []
+
+	for n_in in range(4, 10):
+		rho_tmp.append(_fit_rho(sample, n=n_in))
+
+	return np.mean(rho_tmp)
+
+
 ######################################################################################################
+
+def _vv(x, y, s, r):
+	return s**2 + (x+y)**2 + 2.*(r-1.)*x*y
+
+
+def _qq(x, y, r):
+	return r*(x+y)**2 + x*y*(1-r)**2
+
+
+def _kk(x, y, s, r):
+	return (x+y)**4 + 4.*(r-1.)*x*y*(x**2+y**2) + 6.*s**2*((x+y)**2 + 2.*(r-1.)*x*y) + 3.*s**4
+
 
 def _equations(params, sample_moments_rho):
 
@@ -254,20 +308,11 @@ def _equations(params, sample_moments_rho):
 			_qq(cl, cr, rho_s) - qq_s)
 
 
-def find_params(params_start, *sample_mometns_rho):
+def _find_params(params_start, *sample_mometns_rho):
 	return scipy.optimize.fsolve(_equations, x0=params_start, args=sample_mometns_rho)
 
 
-def estimate_parameters(sample):
-
-	# moments estimation
-	vv_sample, kk_sample, qq_sample = estimate_vkq(sample)
-
-	# rho estimation
-	rho_tmp = []
-	for n_in in range(4, 10):
-		rho_tmp.append(estimate_rho(sample, n=n_in))
-	rho_sample = np.mean(rho_tmp)
+def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample):
 
 	moments_rho_sample = (vv_sample, kk_sample, qq_sample, rho_sample)
 
@@ -284,7 +329,7 @@ def estimate_parameters(sample):
 
 	while theta_sample < 0. or phi_sample < 0. or sigma_sample < 0.:
 
-		params_sample = find_params(params_start, moments_rho_sample)
+		params_sample = _find_params(params_start, moments_rho_sample)
 
 		cl_sample = params_sample[0]
 		cr_sample = params_sample[1]
@@ -296,3 +341,15 @@ def estimate_parameters(sample):
 		params_start = [i + np.random.normal(0., 1.) for i in params_start]
 
 	return theta_sample, phi_sample, rho_sample, sigma_sample
+
+
+def estimate_parameters(sample):
+
+	# moments estimation
+	vv_sample, kk_sample, qq_sample = _estimate_vkq(sample)
+
+	# rho estimation
+	rho_sample = _estimate_rho(sample)
+
+	return _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample)
+

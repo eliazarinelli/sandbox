@@ -76,3 +76,21 @@ class TestEstimateMoments(unittest.TestCase):
 			self.assertEqual(i, j)
 
 
+class TestEsitmateParameters(unittest.TestCase):
+
+	def test_estimate_acv(self):
+
+		""" Auto-covariance of a constant list should be 0 """
+
+		# generating sample
+		sample_length = 1000
+		sample = [1.]*sample_length
+
+		# expected output
+		n_legs = 5
+		expected_output = [0.]*(n_legs+1)
+
+		# actual output
+		actual_output = mrr._estimate_acv(sample, n_legs)
+
+		self.assertEqual(expected_output, actual_output)
