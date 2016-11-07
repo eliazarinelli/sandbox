@@ -3,6 +3,10 @@ import numpy as np
 import scipy.stats
 import scipy.optimize
 
+CL_START = 2.
+CR_START = -2.
+SIGMA_START = 2.
+DEFAULT_VAL = -10000.
 
 def _c_l(theta, phi):
 	return theta + phi
@@ -218,8 +222,18 @@ def _estimate_acv(sample, n_lags):
 	# i-lag autocovariance
 	for i in range(1, n_lags+1):
 		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
-
+		#acv.append(np.corrcoef(sample[i:], sample[:-i])[0, 1] * np.var(sample))
 	return acv
+
+
+def c_moment_2(sample):
+	""" Estimate the sample second centered moment """
+	return np.var(sample)
+
+
+def c_moment_4(sample):
+	""" Estimate the sample fourth centered moment """
+	return scipy.stats.kurtosis(sample, fisher=False) * c_moment_2(sample)**2
 
 
 def _estimate_vkq(sample):
@@ -255,8 +269,10 @@ def _fit_mean(x, y):
 
 	tmp = []
 	for i in range(3, len(x)+1):
-		tmp.append(scipy.stats.linregress(x[:i], y[:i])[0])
-	return np.mean(tmp)
+		tmp.append(scipy.stats.linregress(x[:i], y[:i]))
+	tmp_2 = list(zip(*tmp))
+	#return np.mean(np.exp(tmp))
+	return np.mean(tmp_2[0]), np.mean(tmp_2[1])
 
 
 def _estimate_rho(sample, n_lags):
@@ -266,7 +282,7 @@ def _estimate_rho(sample, n_lags):
 
 	:param sample: list, transaction price returns
 	:param n_lags: int, number of lags for the fitting
-	:return: float, sample rho
+	:return: float, rho hat
 
 	Find the best fitting parameter rho_i that describe the decay
 	of the first i lags of the sample auto-covariance function (times -1).
@@ -289,12 +305,15 @@ def _estimate_rho(sample, n_lags):
 	yy_1 = yy_0[sel_pos]
 
 	if len(xx_1) < 3:
-		#raise Warning('Not enough points for the fit')
+		# if the number of non-negative values is less than 3, we return nan
+		# since it would be impossible to fit rho
+		print('Not enough positive points, return nan')
 		return np.nan
 	else:
-		# rho sample
+		# rho hat
 		rho_sample_log = _fit_mean(xx_1, np.log(yy_1))
-		return np.exp(rho_sample_log)
+		#return rho_sample_log
+		return np.exp(rho_sample_log[0]), np.exp(rho_sample_log[1])
 
 
 ######################################################################################################
@@ -320,50 +339,138 @@ def _equations(params, sample_moments_rho):
 			_qq(cl, cr, rho_s) - qq_s)
 
 
-def _find_params(params_start, *sample_mometns_rho):
-	return scipy.optimize.fsolve(_equations, x0=params_start, args=sample_mometns_rho)
+def _find_params(params_start, *sample_moments_rho):
+
+	"""
+	Find the parameters cl, cr and sigma that better explain the sample moments
+	:param params_start: list, starting point of the fsovle algorithm
+	:param sample_moments_rho: list, estimated sample moments vv, kk and qq and the estimated rho
+	:return: tuple, inferred cl, cr and sigma
+	"""
+
+	return tuple(scipy.optimize.fsolve(_equations, x0=params_start, args=sample_moments_rho))
 
 
-def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample):
+def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat):
 
-	moments_rho_sample = (vv_sample, kk_sample, qq_sample, rho_sample)
+	"""
+	Find the parameters theta, phi and sigma that better explain the sample moments
+	:param vv_sample: float, sample centered second moment
+	:param kk_sample: float, sample centered fourth moment
+	:param qq_sample: float, sample 1-lag covariance
+	:param rho_hat: float, estimated paramete
+	:return: tuple, inferred theta, phi and sigma
+	"""
+
+	# tuple of sample moments and rho_hat
+	moments_rho_sample = (vv_sample, kk_sample, qq_sample, rho_hat)
 
 	# starting value of the inference parameter
-	cl_start = 1.
-	cr_start = -1.
-	sigma_start = 1.
-	params_start = [cl_start, cr_start, sigma_start]
+	params_start = [CL_START, CR_START, SIGMA_START]
 
 	# default value of the sample parameters
-	theta_sample = -1000.
-	phi_sample = -1000.
-	sigma_sample = -1000.
+	theta_hat = DEFAULT_VAL
+	phi_hat = DEFAULT_VAL
+	sigma_hat = DEFAULT_VAL
 
-	while theta_sample < 0. or phi_sample < 0. or sigma_sample < 0.:
+	while theta_hat < 0. or phi_hat < 0. or sigma_hat < 0.:
 
-		params_sample = _find_params(params_start, moments_rho_sample)
+		# find the parameters cl, cr and sigma that better explain the sample moments
+		cl_hat, cr_hat, sigma_hat = _find_params(params_start, moments_rho_sample)
 
-		cl_sample = params_sample[0]
-		cr_sample = params_sample[1]
-		sigma_sample = params_sample[2]
-		theta_sample = (cl_sample+cr_sample)/(1.-rho_sample)
-		phi_sample = cl_sample - theta_sample
+		# retrieving theta from cl and cr
+		theta_hat = (cl_hat+cr_hat)/(1.-rho_hat)
+
+		# retrieving phi from cl and cr
+		phi_hat = cl_hat - theta_hat
 
 		# new starting parameters
-		params_start = [i + np.random.normal(0., 1.) for i in params_start]
+		params_start = [i + np.random.normal(0., 0.1) for i in params_start]
+		#params_start[0] = np.abs(params_start[0] + np.random.normal(0., 1.))
+		#params_start[1] = -1.*np.abs(params_start[1] + np.random.normal(0., 1.))
+		#params_start[2] = np.abs(params_start[2] + np.random.normal(0., 1.))
 
-	return theta_sample, phi_sample, rho_sample, sigma_sample
+	return theta_hat, phi_hat, sigma_hat
 
 
-def estimate_parameters(sample):
+def estimate_parameters(sample, n_lag_rho):
 
 	# moments estimation
 	vv_sample, kk_sample, qq_sample = _estimate_vkq(sample)
 
 	# rho estimation
-	rho_sample = _estimate_rho(sample)
-	if np.isnan(rho_sample):
+	rho_hat = _estimate_rho(sample, n_lag_rho)
+
+	if np.isnan(rho_hat):
 		return np.nan, np.nan, np.nan, np.nan
 	else:
-		return _solve_parameters(vv_sample, kk_sample, qq_sample, rho_sample)
+		# parameters estimation
+		theta_hat, phi_hat, sigma_hat = _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat)
+		return rho_hat, theta_hat, phi_hat, sigma_hat
 
+
+if __name__ == '__main__':
+
+	n_steps = 2**18
+
+	m = 0.
+	rho = 0.7
+	theta = 1.
+	phi = 0.3
+	sigma = 1.
+
+	if True:
+
+		def thacv(x, a, b):
+			return a*b**x
+
+		for i_sample in range(1):
+			sample_gen = mrr(n=n_steps, m=m, rho=rho, theta=theta, phi=phi, sigma=sigma)
+			sample_list = list(zip(*sample_gen))
+			sample = sample_list[1]
+			n_lags = 7
+			yy = np.array(_estimate_acv(sample, n_lags)[1:])
+			xx = np.arange(1, n_lags+1)
+
+			out = scipy.optimize.curve_fit(thacv, xx, yy, [-1., 1.])
+			aa_hat = out[0][0]
+			rho_hat= out[0][1]
+			print(aa_hat, rho_hat)
+			qq_hat = aa_hat * rho_hat
+			qq_population = _gm_1_4(0, rho, theta, phi)
+			print(qq_population, qq_hat, (qq_population-qq_hat)/qq_population)
+
+	if False:
+
+		tmp = [[], [], [], []]
+		for i in range(50):
+			print(i)
+			sample_gen = mrr(n=n_steps, m=m, rho=rho, theta=theta, phi=phi, sigma=sigma)
+			sample_list = list(zip(*sample_gen))
+			sample = sample_list[1]
+			vv_sample, kk_sample, qq_sample = _estimate_vkq(sample)
+			tmp[0].append(vv_sample)
+			tmp[1].append(kk_sample)
+			tmp[2].append(qq_sample)
+			a, b = _estimate_rho(sample, 3)
+			tmp[3].append(-1.*a*b)
+
+		vv_population = _gm_1_1(0, rho, theta, phi, sigma)
+		kk_population = _gm_1_3(0, rho, theta, phi, sigma)
+		qq_population = _gm_1_4(0, rho, theta, phi)
+		moments_population = [vv_population, kk_population, qq_population, qq_population]
+		for i in [0, 1, 2, 3]:
+			print(moments_population[i], np.mean(tmp[i]), np.std(tmp[i]), np.std(tmp[i])/np.mean(tmp[i]))
+
+	if False:
+		import matplotlib.pyplot as plt
+		plt.clf()
+		fig = plt.figure()
+		ax = fig.add_subplot(111)
+		ax.scatter([_gm_1_4(0, rho, theta, phi)]*len(tmp), tmp)
+		ax.set_xlim([-0.15,0.02])
+		ax.set_ylim([-0.15,0.02])
+		ax.set_xlabel(r'$Q(2)$')
+		ax.set_ylabel(r'$\hat{Q}(2)$')
+	#	plt.savefig('../plot/plot_04_q_2.pdf')
+		plt.show()
