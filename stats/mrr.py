@@ -236,6 +236,57 @@ def c_moment_4(sample):
 	return scipy.stats.kurtosis(sample, fisher=False) * c_moment_2(sample)**2
 
 
+def _acv_population(x, prefactor, rho):
+	""" Functional form of the auto-covariance function """
+	return prefactor * rho**x
+
+
+def _fit_acv_population(xx, acv_sample):
+	"""
+	Find the best fitting parameters of the auto-covariance function
+	:param xx: np.array, i-th lag
+	:param acv_sample: np.array, i-th sample auto-covariance
+	:return: prefactor and rho
+	"""
+
+	if len(xx) != len(acv_sample):
+		raise ValueError('xx and yy have different lenght')
+
+	# casting to np.array
+	xx_in = np.array(xx)
+	acv_sample_in = np.array(acv_sample)
+
+	# non-linear fit
+	out = scipy.optimize.curve_fit(_acv_population, xx_in, acv_sample_in, [-1., 1.])
+
+	# return the prefactor and rho
+	return out[0][0], out[0][1]
+
+
+def estimate_rho_qq(sample, n_lags):
+	"""
+	Estimate rho and the 1-lag sample auto-covariance
+
+	:param sample: list, sample
+	:param n_lags: int
+	:return: rho_hat, qq_hat
+	"""
+
+	# estimate the auto-covariance function
+	acv_sample_0 = _estimate_acv(sample, n_lags)
+
+	# remove the first point
+	acv_sample = np.array(acv_sample_0[1:])
+
+	# first n integers
+	xx = np.arange(1, n_lags+1)
+
+	# fit the auto-covariance
+	prefactor_hat, rho_hat = _fit_acv_population(xx, acv_sample)
+
+	return rho_hat, prefactor_hat*rho_hat
+
+
 def _estimate_vkq(sample):
 
 	"""
@@ -421,24 +472,15 @@ if __name__ == '__main__':
 
 	if True:
 
-		def thacv(x, a, b):
-			return a*b**x
+		sample_gen = mrr(n=n_steps, m=m, rho=rho, theta=theta, phi=phi, sigma=sigma)
+		sample_list = list(zip(*sample_gen))
+		sample = sample_list[1]
 
-		for i_sample in range(1):
-			sample_gen = mrr(n=n_steps, m=m, rho=rho, theta=theta, phi=phi, sigma=sigma)
-			sample_list = list(zip(*sample_gen))
-			sample = sample_list[1]
-			n_lags = 7
-			yy = np.array(_estimate_acv(sample, n_lags)[1:])
-			xx = np.arange(1, n_lags+1)
+		qq_hat, rho_hat = estimate_rho_qq(sample, 10)
 
-			out = scipy.optimize.curve_fit(thacv, xx, yy, [-1., 1.])
-			aa_hat = out[0][0]
-			rho_hat= out[0][1]
-			print(aa_hat, rho_hat)
-			qq_hat = aa_hat * rho_hat
-			qq_population = _gm_1_4(0, rho, theta, phi)
-			print(qq_population, qq_hat, (qq_population-qq_hat)/qq_population)
+		qq_population = _gm_1_4(0, rho, theta, phi)
+		print(qq_population, qq_hat)
+		print(rho, rho_hat)
 
 	if False:
 
