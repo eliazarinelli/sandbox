@@ -2,6 +2,7 @@ import random
 import numpy as np
 import scipy.stats
 import scipy.optimize
+import common
 
 DEFAULT_VAL = -10000.
 
@@ -83,6 +84,17 @@ def _gm_1_5(m, rho, theta, phi):
 	return (_c_l(theta, phi)**2 + _c_r(rho, theta, phi)**2)*_c_101(m, rho) \
 			+ _c_l(theta, phi)*_c_r(rho, theta, phi)*(_c_11(m, rho) + _c_1001(m, rho))
 
+def c_moment_2_th(m, rho, theta, phi, sigma):
+	return _gm_1_1(m, rho, theta, phi, sigma)
+
+
+def c_moment_4_th(m, rho, theta, phi, sigma):
+	return _gm_1_3(m, rho, theta, phi, sigma)
+
+
+def acvar_1_th(m, rho, theta, phi):
+	return _gm_1_4(m, rho, theta, phi)
+
 
 def dar(n, m=0., rho=0.5, start=1):
 
@@ -148,34 +160,13 @@ def mrr(n, m=0., rho=0.5, theta=1., phi=1., sigma=1.):
 	while i < n:
 
 		epsilon_new = next(epsilon_gen)
-		yield epsilon_new, _c_l(theta, phi) * float(epsilon_new) + _c_r(rho, theta, phi) * float(epsilon_previous) + random.gauss(0., sigma)
+		yield epsilon_new, _c_l(theta, phi) * float(epsilon_new) + \
+			  _c_r(rho, theta, phi) * float(epsilon_previous) \
+			  + random.gauss(0., sigma)
 		epsilon_previous = epsilon_new
 
 
 ######################################################################################################
-
-
-def _estimate_acv(sample, n_lags):
-
-	"""
-	Estimate the first n-lags auto-covariance of a sample
-	:param sample: list, a sample of transaction price returns
-	:param n_lags: int, number of lags
-	:return: list, sample auto-covariance
-	"""
-
-	# empty output
-	acv = []
-
-	# 0-lag auto-covariance
-	acv.append(np.cov(sample, sample)[0, 1])
-
-	# i-lag autocovariance
-	for i in range(1, n_lags+1):
-		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
-		#acv.append(np.corrcoef(sample[i:], sample[:-i])[0, 1] * np.var(sample))
-	return acv
-
 
 def c_moment_2(sample):
 	""" Estimate the sample second centered moment """
@@ -214,7 +205,7 @@ def _fit_acv_population(xx, acv_sample):
 	return out[0][0], out[0][1]
 
 
-def estimate_rho_qq(sample, n_lags):
+def rho_qq_hat(sample, n_lags):
 	"""
 	Estimate rho and the 1-lag sample auto-covariance
 
@@ -224,7 +215,7 @@ def estimate_rho_qq(sample, n_lags):
 	"""
 
 	# estimate the auto-covariance function
-	acv_sample_0 = _estimate_acv(sample, n_lags)
+	acv_sample_0 = common.acvar(sample, n_lags)
 
 	# remove the first point
 	acv_sample = np.array(acv_sample_0[1:])
@@ -277,7 +268,7 @@ def _find_params(params_start, *sample_moments_rho):
 	return out
 
 
-def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat):
+def th_ph_s_hat(vv_sample, kk_sample, qq_sample, rho_hat):
 
 	"""
 	Find the parameters theta, phi and sigma that better explain the sample moments
@@ -299,7 +290,7 @@ def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat):
 	phi_hat = DEFAULT_VAL
 	sigma_hat = DEFAULT_VAL
 
-	while theta_hat < 0.1 or phi_hat < 0. or sigma_hat < 0.:
+	while theta_hat < 0. or phi_hat < 0. or sigma_hat < 0.:
 
 		# find the parameters cl, cr and sigma that better explain the sample moments
 		cl_hat, cr_hat, sigma_hat = _find_params(params_start, moments_rho_sample)
@@ -315,18 +306,3 @@ def _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat):
 
 	return theta_hat, phi_hat, sigma_hat
 
-
-def estimate_parameters(sample, n_lag_rho):
-
-	# moments estimation
-	vv_sample, kk_sample, qq_sample = _estimate_vkq(sample)
-
-	# rho estimation
-	rho_hat = _estimate_rho(sample, n_lag_rho)
-
-	if np.isnan(rho_hat):
-		return np.nan, np.nan, np.nan, np.nan
-	else:
-		# parameters estimation
-		theta_hat, phi_hat, sigma_hat = _solve_parameters(vv_sample, kk_sample, qq_sample, rho_hat)
-		return rho_hat, theta_hat, phi_hat, sigma_hat
