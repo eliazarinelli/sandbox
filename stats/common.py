@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 
 
 def acvar(sample, n_lags):
@@ -21,3 +22,14 @@ def acvar(sample, n_lags):
 		acv.append(np.cov(sample[i:], sample[:-i])[0, 1])
 
 	return acv
+
+
+def c_moment_2(sample):
+	""" Estimate the sample second centered moment """
+	return np.var(sample)
+
+
+def c_moment_4(sample):
+	""" Estimate the sample fourth centered moment """
+	return scipy.stats.kurtosis(sample, fisher=False) * c_moment_2(sample)**2
+

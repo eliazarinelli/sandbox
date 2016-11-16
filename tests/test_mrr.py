@@ -3,6 +3,9 @@ import stats.mrr as mrr
 
 import numpy as np
 
+# Process Generation ###############################################################
+
+
 class TestDar(unittest.TestCase):
 
 	def test_rho_1(self):
@@ -41,95 +44,25 @@ class TestMrr(unittest.TestCase):
 		for i, j in mm:
 			self.assertIn(j, expected_values)
 
-	def test_gm_1_1(self):
-		m = 0.
-		rho = 0.
-		theta = 1.
-		phi = 1.
-		sigma = 1.
 
-		actual_output = mrr._gm_1_1(m, rho, theta, phi, sigma)
-		expected_output = 6.
-
-		self.assertEqual(expected_output, actual_output)
-
-class TestEstimateMoments(unittest.TestCase):
-
-	def test_basic_case(self):
-
-		""" Test the moments_estimation function in case of no randomness,
-		e.g. all the y_i = 2 """
-
-		n_steps = 1000
-		input_epsilon =[1]*n_steps
-		input_y = [2]*n_steps
-
-		# creating an iterator from the input list
-		zip_e_y = zip(input_epsilon, input_y)
-
-		# estimation of the moments
-		actual_output = mrr.estimate_moments(zip_e_y)
-
-		# expected output
-		expected_output = (4., 8., 16., 4., 4.)
-
-		for i, j in zip(actual_output, expected_output):
-			self.assertEqual(i, j)
+# Parameter Inference ###########################################################################
 
 
-class TestEsitmateParameters(unittest.TestCase):
+class Test_fit_acv_population(unittest.TestCase):
 
-	def test_estimate_acv(self):
+	def test_standard_case(self):
 
-		""" Auto-covariance of a constant list should be 0 """
+		""" We add noise to the analytic function and retrieve the parameters """
 
-		# generating sample
-		sample_length = 1000
-		sample = [1.]*sample_length
+		prefactor_input = 1.
+		rho_input = 0.5
+		xx_input = list(range(1, 10))
+		yy_input = [mrr._acv_population(i, prefactor=prefactor_input, rho=rho_input)
+					+ np.random.normal(0., 0.0001) for i in xx_input]
 
-		# expected output
-		n_legs = 5
-		expected_output = [0.]*(n_legs+1)
+		expected_output = (prefactor_input, rho_input)
+		actual_output = mrr._fit_acv_population(xx_input, yy_input)
 
-		# actual output
-		actual_output = mrr._estimate_acv(sample, n_legs)
-
-		self.assertEqual(expected_output, actual_output)
-
-	def test_estimate_vkq(self):
-
-		""" Moments and auto-covariance of a constant list should be 0 """
-
-		# generating sample
-		sample_length = 1000
-		sample = [1.]*sample_length
-
-		# expected output
-		expected_output = (0., 0., 0.)
-
-		# actual output
-		actual_output = mrr._estimate_vkq(sample)
-
-		self.assertEqual(expected_output, actual_output)
-
-	def test_fit_mean(self):
-
-		""" Linear fit"""
-
-		# generating points
-		n_points = 2**5
-		slope = 2.
-		x = np.linspace(1., 2., n_points)
-		y = slope*x + np.random.normal(0., 0.001, n_points)
-
-		# expected output
-		expected_output = slope
-
-		# actual output
-		actual_output = mrr._fit_mean(x, y)
-
-		# tolerance of the error
-		tolerance = 0.01
-		self.assertTrue(np.abs(actual_output-expected_output) < tolerance)
-
-
+		tollerance = 0.01
+		for i, j in zip(expected_output, actual_output):
+			self.assertTrue(np.abs(i-j) < tollerance)
