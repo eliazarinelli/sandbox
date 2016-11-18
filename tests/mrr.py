@@ -77,3 +77,45 @@ class Test_fit_acv_population(unittest.TestCase):
 		tolerance = 0.01
 		for i, j in zip(expected_output, actual_output):
 			self.assertTrue(np.abs(i-j) < tolerance)
+
+
+class Test_find_params(unittest.TestCase):
+
+	def test_standard_case(self):
+
+		"""
+		We test that giving giving as starting point of the optimisation algoirthm
+		close to the expected output, we algorith returns the expected output
+		"""
+
+		# Input model parameters
+		rho_input = 0.5
+		theta_input = 0.7
+		phi_input = 0.9
+		sigma_input = 1.
+
+		# cl and cr
+		c_l = mrr._c_l(theta_input, phi_input)
+		c_r = mrr._c_r(rho_input, theta_input, phi_input)
+
+		# Population moments
+		vv_population = mrr._vv(c_l, c_r, sigma_input, rho_input)
+		kk_population = mrr._kk(c_l, c_r, sigma_input, rho_input)
+		qq_population = mrr._qq(c_l, c_r, rho_input)
+
+		# Second input of the function
+		moments_population_and_rho = [vv_population, kk_population, qq_population, rho_input]
+
+		# First input of the function
+		# The starting point for the fsolve algorithm, we consider the model inputs
+		# plus noise
+		expected_output = [c_l, c_r, sigma_input]
+		starting_point = [i + np.random.normal(0, 0.001) for i in expected_output]
+
+		# Actual output
+		actual_output = mrr._find_params(starting_point, moments_population_and_rho)
+
+		# Testing that the expected and actual output are the same up to a tolerance
+		tolerance = 0.00001
+		for i, j in zip(actual_output, expected_output):
+			self.assertTrue(np.abs(i-j) < tolerance)

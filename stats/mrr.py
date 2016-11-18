@@ -176,6 +176,7 @@ def _find_params(params_start, *sample_moments_rho):
 
 	"""
 	Find the parameters cl, cr and sigma that better explain the sample moments
+
 	:param params_start: list, starting point of the fsovle algorithm
 	:param sample_moments_rho: list, estimated sample moments vv, kk and qq and the estimated rho
 	:return: tuple, inferred cl, cr and sigma
@@ -191,6 +192,7 @@ def th_ph_s_hat(vv_sample, kk_sample, qq_sample, rho_hat):
 
 	"""
 	Find the parameters theta, phi and sigma that better explain the sample moments
+
 	:param vv_sample: float, sample centered second moment
 	:param kk_sample: float, sample centered fourth moment
 	:param qq_sample: float, sample 1-lag covariance
