@@ -54,15 +54,26 @@ class Test_fit_acv_population(unittest.TestCase):
 
 		""" We add noise to the analytic function and retrieve the parameters """
 
+		# Model parameters that we want to recover
 		prefactor_input = 1.
 		rho_input = 0.5
-		xx_input = list(range(1, 10))
-		yy_input = [mrr._acv_population(i, prefactor=prefactor_input, rho=rho_input)
-					+ np.random.normal(0., 0.0001) for i in xx_input]
 
+		# First 10 integers
+		xx_input = list(range(1, 10))
+
+		# The population autoc-ovariance function with the input model parameters
+		# plus noise
+		sigma_noise = 0.0001
+		yy_input = [mrr._acv_population(i, prefactor=prefactor_input, rho=rho_input)
+					+ np.random.normal(0., sigma_noise) for i in xx_input]
+
+		# The expected output are the input model parameters
 		expected_output = (prefactor_input, rho_input)
+
+		# The actual output are the model parameters inferred by the fitting procedure
 		actual_output = mrr._fit_acv_population(xx_input, yy_input)
 
-		tollerance = 0.01
+		# We test that the expected and the actual output coincide up to a given tolerance
+		tolerance = 0.01
 		for i, j in zip(expected_output, actual_output):
-			self.assertTrue(np.abs(i-j) < tollerance)
+			self.assertTrue(np.abs(i-j) < tolerance)
