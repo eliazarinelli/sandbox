@@ -3,6 +3,7 @@ import stats.common as cm
 
 import numpy as np
 
+
 class TestAcvar(unittest.TestCase):
 
 	def test_trivial_case(self):
@@ -22,23 +23,43 @@ class TestAcvar(unittest.TestCase):
 
 		self.assertEqual(expected_output, actual_output)
 
-class Test_c_moment_2(unittest.TestCase):
+
+class TestCmoment2(unittest.TestCase):
 
 	def test_trivial_case(self):
 
-		sample_input = np.random.normal(0., 0.1, 1000)
-		expected_output = 0.
+		""" Variance of a sample of independent normal random variables """
+
+		# Input, sample of independent normal random variables
+		population_variance = 1.
+		sample_input = np.random.normal(0., population_variance, 10000)
+
+		# Expected output
+		expected_output = population_variance
+
+		# Estimating the sample variance
 		actual_output = cm.c_moment_2(sample_input)
-		tollerance = 0.01
-		self.assertTrue(np.abs(actual_output-expected_output)<tollerance)
+
+		# Testing that the expected and actual output are the same up to a tolerance
+		tolerance = 0.05
+		self.assertTrue(np.abs(actual_output-expected_output) < tolerance)
 
 
-class Test_c_moment_4(unittest.TestCase):
+class TestCmoment4(unittest.TestCase):
 
 	def test_trivial_case(self):
 
+		""" 4th central momement of a sample of independent normal random variables """
+
+		# Input, sample of independent normal random variables
 		sample_input = np.random.normal(0., 0.1, 1000)
+
+		# Expected output
 		expected_output = 0.
+
+		# Estimating the sample moment
 		actual_output = cm.c_moment_4(sample_input)
-		tollerance = 0.01
-		self.assertTrue(np.abs(actual_output-expected_output)<tollerance)
+
+		# Testing that the expected and actual output are the same up to a tolerance
+		tolerance = 0.01
+		self.assertTrue(np.abs(actual_output-expected_output) < tolerance)

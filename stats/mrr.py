@@ -152,14 +152,23 @@ def rho_qq_hat(sample, n_lags):
 
 
 def _vv(x, y, s, r):
+	"""
+	Population second central moment for m=0, where x is c_l,
+	y is c_r, s is sigma and r is rho
+	"""
 	return s**2 + (x+y)**2 + 2.*(r-1.)*x*y
 
 
 def _qq(x, y, r):
+	"""	Population 1-lag auto covariance function for m=0, where x is c_l,
+	y is c_r, s is sigma and r is rho """
 	return r*(x+y)**2 + x*y*(1-r)**2
 
 
 def _kk(x, y, s, r):
+	"""
+	Population second central moment for m=0, where x is c_l,
+	y is c_r, s is sigma and r is rho """
 	return (x+y)**4 + 4.*(r-1.)*x*y*(x**2+y**2) + 6.*s**2*((x+y)**2 + 2.*(r-1.)*x*y) + 3.*s**4
 
 
