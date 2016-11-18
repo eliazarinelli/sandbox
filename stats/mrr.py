@@ -2,7 +2,7 @@ import random
 import numpy as np
 import scipy.stats
 import scipy.optimize
-import common
+import stats.common
 
 DEFAULT_VAL = -10000.
 
@@ -134,7 +134,7 @@ def rho_qq_hat(sample, n_lags):
 	"""
 
 	# estimate the auto-covariance function
-	acv_sample_0 = common.acvar(sample, n_lags)
+	acv_sample_0 = stats.common.acvar(sample, n_lags)
 
 	# remove the first point
 	acv_sample = np.array(acv_sample_0[1:])
