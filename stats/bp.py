@@ -28,7 +28,7 @@ def _phi_field(x_1, h, beta):
 	return np.exp(beta*h*x_1)
 
 
-def _propagate_message(beta, J, h, mu_up):
+def _propagate_message(beta, jj, hh, mu_up):
 	"""
 	Next positive message from left
 
@@ -40,12 +40,12 @@ def _propagate_message(beta, J, h, mu_up):
 	"""
 
 	# non normalised positive message
-	tmp_up = _phi_interaction(SU, SU, J, beta) * _phi_field(SU, h, beta) * mu_up \
-			 + _phi_interaction(SU, SD, J, beta) * _phi_field(SU, h, beta) * (1.-mu_up)
+	tmp_up = _phi_interaction(SU, SU, jj, beta) * _phi_field(SU, hh, beta) * mu_up \
+			 + _phi_interaction(SU, SD, jj, beta) * _phi_field(SD, hh, beta) * (1.-mu_up)
 
 	# non normalised negative message
-	tmp_dw = _phi_interaction(SD, SU, J, beta) * _phi_field(SD, h, beta) * mu_up \
-			 + _phi_interaction(SD, SD, J, beta) * _phi_field(SD, h, beta) * (1.-mu_up)
+	tmp_dw = _phi_interaction(SD, SU, jj, beta) * _phi_field(SU, hh, beta) * mu_up \
+			 + _phi_interaction(SD, SD, jj, beta) * _phi_field(SD, hh, beta) * (1.-mu_up)
 
 	# normalised positive message
 	return tmp_up / (tmp_up+tmp_dw)
