@@ -3,6 +3,7 @@ import numpy as np
 SU = 1
 SD = -1
 
+
 def _phi_interaction(x_1, x_2, J, beta):
 	"""
 	Exponential of the two spins interaction term
@@ -37,6 +38,12 @@ def _propagate_message(beta, jj, hh, mu_up):
 	:param hh: float, external magnetic field
 	:param mu_up: float, incoming positive message
 	:return: float, new positive message
+
+	Implements the update rule for a message of an Ising variable on a chain:
+	\mu_{Left,i+1}(s_{i+1}) ~= \sum_{s_i = +1, -1} \phi_{i, i+1}(s_i, s_{i+1} \phi_i(s_i) \mu_{Left,i}(s_i))
+	and returns
+	\mu_{Left,i+1}(s_{i+1} = +1)
+	Due to simmetry also valid for \mu{Right, i}
 	"""
 
 	# non normalised positive message
@@ -58,7 +65,7 @@ def _propagate_messages_chain(beta, coupling, field, message_start, direction):
 
 	:param beta: float, inverse temperature
 	:param coupling: list, 2-body couplings J_{i,i+1}
-	:param field: field, external magnetic field h_I
+	:param field: field, external magnetic field h_i
 	:param message_start: message on the leaf
 	:param direction: str, left or right
 	:return: messages_out, list the propagated messages
@@ -85,7 +92,7 @@ def _propagate_messages_chain(beta, coupling, field, message_start, direction):
 
 	for jj, hh in j_h_list:
 
-		# propagating messagae
+		# propagating message
 		message_next = _propagate_message(beta, jj, hh, message_previous)
 
 		# appending message to the ouptput
@@ -99,3 +106,48 @@ def _propagate_messages_chain(beta, coupling, field, message_start, direction):
 		messages_output.reverse()
 
 	return messages_output
+
+
+def marginals(beta, coupling, field):
+
+	"""
+	Marginals of an Ising spin chain
+
+	:param beta: float, inverse temperature
+	:param coupling: list, 2-body couplings J_{i,i+1}
+	:param field: field, external magnetic field h_i
+	:return: marginals, list
+
+	Implements the equation:
+	\mu(s_i) ~= \mu_{Left,i}(s_i) exp(\beta h_i s_i) \mu_{Right,i}(s_i)
+	"""
+	
+	# Checking the consistency of coupling and field
+	if len(coupling) != len(field)-1:
+		raise ValueError('Length of coupling and of input non consistent')
+
+	# Setting the value for the starting messages on the leafs equal to 0.5
+	message_start = 0.5
+
+	# Propagate messages from the left
+	mu_left = _propagate_messages_chain(beta, coupling, field, message_start, 'left')
+
+	# Propagate messages from the right
+	mu_right = _propagate_messages_chain(beta, coupling, field, message_start, 'right')
+
+	# Calculating the external magnetic field term, positive
+	lf_up = [np.exp(beta*hh*SU) for hh in field]
+
+	# Calculating the external magnetic field term, negative
+	lf_dw = [np.exp(beta*hh*SD) for hh in field]
+
+	# Non-normalised marginal for s_i = +1
+	mu_up_non = [ml*lf*mr for ml, lf, mr in zip(mu_left, lf_up, mu_right)]
+
+	# Non-normalised marginal for s_i = -1
+	mu_dw_non = [(1.-ml)*lf*(1.-mr) for ml, lf, mr in zip(mu_left, lf_dw, mu_right)]
+
+	# Marginals for s_i = +1
+	marginals_list = [mu_up/(mu_up+mu_dw) for mu_up, mu_dw in zip(mu_up_non, mu_dw_non)]
+
+	return marginals_list
