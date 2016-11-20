@@ -3,6 +3,7 @@ import numpy as np
 
 import stats.bp
 
+
 class TestIsingChain(unittest.TestCase):
 
 	def test_propagate_message_beta_0(self):
@@ -107,3 +108,34 @@ class TestIsingChain(unittest.TestCase):
 
 			# Testing that the actual and expected outputs are the same
 			self.assertAlmostEquals(actual_output, expected_output)
+
+	def test_propagate_from_left_beta_0(self):
+
+		"""
+		If beta = 0 all the messages are equal to 0.5
+		"""
+
+		# Inputs
+		n_coupling = 10
+		beta_input = 0.
+		coupling_input = [1.] * n_coupling
+		field_input = [1.] * (n_coupling+1)
+		message_start_input = 0.5
+
+		# Expected output
+		expected_output = [0.5] * (n_coupling+1)
+
+		# Propagating the messages from left
+		actual_output = stats.bp._propagate_messages_chain(beta_input, coupling_input,
+														   field_input, message_start_input, 'left')
+
+		# Comparing the left messages along the chain
+		self.assertEqual(expected_output, actual_output)
+
+		# Propagating the messages from left
+		actual_output = stats.bp._propagate_messages_chain(beta_input, coupling_input,
+														   field_input, message_start_input, 'right')
+
+		# Comparing the left messages along the chain
+		self.assertEqual(expected_output, actual_output)
+

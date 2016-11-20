@@ -33,8 +33,8 @@ def _propagate_message(beta, jj, hh, mu_up):
 	Next positive message from left
 
 	:param beta: float, inverse temperature
-	:param J: float, coupling
-	:param h: float, external magnetic field
+	:param jj: float, coupling
+	:param hh: float, external magnetic field
 	:param mu_up: float, incoming positive message
 	:return: float, new positive message
 	"""
@@ -51,3 +51,51 @@ def _propagate_message(beta, jj, hh, mu_up):
 	return tmp_up / (tmp_up+tmp_dw)
 
 
+def _propagate_messages_chain(beta, coupling, field, message_start, direction):
+
+	"""
+	Propagation of the messages along the chain, from left or right
+
+	:param beta: float, inverse temperature
+	:param coupling: list, 2-body couplings J_{i,i+1}
+	:param field: field, external magnetic field h_I
+	:param message_start: message on the leaf
+	:param direction: str, left or right
+	:return: messages_out, list the propagated messages
+	"""
+
+	# Checking the consistency of coupling and field
+	if len(coupling) != len(field)-1:
+		raise ValueError('Length of coupling and of input non consistent')
+
+	# Checking direction input
+	if direction not in ['left', 'right']:
+		raise ValueError('wrong direction: must be left or rigth')
+
+	# Initialisation of the output
+	messages_output = [message_start]
+
+	# Initialisation of previous message to the value on the leaf
+	message_previous = message_start
+
+	if direction == 'left':
+		j_h_list = zip(coupling, field[:-1])
+	elif direction == 'right':
+		j_h_list = zip(coupling[::-1], field[-2::-1])
+
+	for jj, hh in j_h_list:
+
+		# propagating messagae
+		message_next = _propagate_message(beta, jj, hh, message_previous)
+
+		# appending message to the ouptput
+		messages_output.append(message_next)
+
+		# updating previous message
+		message_previous = message_next
+
+	if direction == 'right':
+		# reverting messages
+		messages_output.reverse()
+
+	return messages_output
